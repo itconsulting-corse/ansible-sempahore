@@ -32,14 +32,3 @@
       debug:
         msg: "{{ yum_check.results | length }} mises à jour disponibles"
       when: ansible_os_family == "RedHat" and yum_check.results is defined
-    
-    - name: Créer un rapport de l'état des serveurs
-      template:
-        src: server_report.j2
-        dest: /tmp/server_report_{{ inventory_hostname }}.txt
-      delegate_to: localhost
-      vars:
-        server_name: "{{ inventory_hostname }}"
-        os_info: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
-        uptime: "{{ ansible_uptime_seconds }}"
-        last_update_check: "{{ ansible_date_time.iso8601 }}"
