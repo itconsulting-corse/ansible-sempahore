@@ -1,0 +1,45 @@
+---
+- name: Test de gestion des mises à jour
+  hosts: test_servers
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Afficher les informations système
+      debug:
+        msg: "Système: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+    
+    - name: Vérifier les paquets disponibles pour mise à jour (Ubuntu/Debian)
+      apt:
+        update_cache: yes
+        upgrade: no
+      register: apt_check
+      when: ansible_os_family == "Debian"
+      check_mode: yes
+    
+    - name: Vérifier les paquets disponibles pour mise à jour (RHEL/CentOS)
+      yum:
+        list: updates
+      register: yum_check
+      when: ansible_os_family == "RedHat"
+    
+    - name: Afficher le nombre de mises à jour disponibles (Debian)
+      debug:
+        msg: "{{ apt_check.stdout_lines | length }} mises à jour disponibles"
+      when: ansible_os_family == "Debian" and apt_check.stdout_lines is defined
+    
+    - name: Afficher les mises à jour disponibles (RHEL)
+      debug:
+        msg: "{{ yum_check.results | length }} mises à jour disponibles"
+      when: ansible_os_family == "RedHat" and yum_check.results is defined
+    
+    - name: Créer un rapport de l'état des serveurs
+      template:
+        src: server_report.j2
+        dest: /tmp/server_report_{{ inventory_hostname }}.txt
+      delegate_to: localhost
+      vars:
+        server_name: "{{ inventory_hostname }}"
+        os_info: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+        uptime: "{{ ansible_uptime_seconds }}"
+        last_update_check: "{{ ansible_date_time.iso8601 }}"
