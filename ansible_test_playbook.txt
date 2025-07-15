@@ -16,10 +16,11 @@
       register: apt_check
       when: ansible_os_family == "Debian"
       check_mode: yes
+      
   
     - name: Display apt output
       debug:
-        var: apt_output
+        var: apt_check
 
     - name: Afficher le nombre de mises à jour disponibles (Debian)
       debug:
