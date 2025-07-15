@@ -17,10 +17,9 @@
       when: ansible_os_family == "Debian"
       check_mode: yes
   
-    - name: Afficher le nombre de mises à jour disponibles (Ubuntu)
+   - name: Display apt output
       debug:
-        msg: "{{ apt_check.stdout_lines | length }} mises à jour disponibles"
-      when: ansible_os_family == "Ubuntu" and apt_check.stdout_lines is defined
+        var: apt_output
 
     - name: Vérifier les paquets disponibles pour mise à jour (RHEL/CentOS)
       yum:
