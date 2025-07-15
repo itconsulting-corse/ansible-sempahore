@@ -23,6 +23,20 @@
       changed_when: false
       failed_when: false
 
+    - name: Compter le nombre de packages à mettre à jour
+      shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | tail -n +2 | wc -l
+      register: packages_count
+      changed_when: false
+
+    - name: Afficher le résumé des mises à jour disponibles
+      debug:
+        msg: |
+          ==========================================
+          Serveur: {{ inventory_hostname }}
+          Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          ==========================================
+          Nombre de packages à mettre à jour: {{ packages_count.stdout }}
+
     - name: Afficher la liste des packages à mettre à jour
       debug:
         msg: "{{ item }}"
