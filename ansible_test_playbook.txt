@@ -43,11 +43,55 @@
       loop: "{{ upgradable_packages.stdout_lines }}"
       when: upgradable_packages.stdout_lines | length > 0
 
-    - name: Display apt output
+    - name: Préparer le rapport JSON pour l'API
+      set_fact:
+        update_report:
+          hostname: "{{ inventory_hostname }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          packages_count: "{{ packages_count.stdout | int }}"
+          packages: "{{ upgradable_packages.stdout_lines | default([]) }}"
+          upgrade_details: "{{ upgrade_details.stdout_lines | default([]) }}"
+          
+    - name: Enregistrer la liste dans un fichier local
+      local_action:
+        module: copy
+        content: |
+          Serveur: {{ inventory_hostname }}
+          Date: {{ ansible_date_time.iso8601 }}
+          Packages à mettre à jour ({{ packages_count.stdout }}):
+          {% for package in upgradable_packages.stdout_lines %}
+          - {{ package }}
+          {% endfor %}
+        dest: "./updates_{{ inventory_hostname }}_{{ ansible_date_time.date }}.txt"
+      when: upgradable_packages.stdout_lines | length > 0
+      
+    - name: Poster le rapport sur l'URL spécifiée
+      uri:
+        url: "{{ report_url }}"
+        method: POST
+        body_format: json
+        body:
+          server: "{{ update_report.hostname }}"
+          timestamp: "{{ update_report.timestamp }}"
+          distribution: "{{ update_report.distribution }}"
+          packages_count: "{{ update_report.packages_count }}"
+          packages: "{{ update_report.packages }}"
+          upgrade_details: "{{ update_report.upgrade_details }}"
+        headers:
+          Content-Type: "application/json"
+          Authorization: "Bearer {{ api_token | default('') }}"
+        status_code: [200, 201, 202]
+        timeout: 30
+      register: post_result
+      when: report_url is defined
+      
+    - name: Afficher le résultat de l'envoi du rapport
       debug:
-        var: apt_check
-
-    - name: Afficher le nombre de mises à jour disponibles (Debian)
+        msg: "Rapport envoyé avec succès à {{ report_url }} - Status: {{ post_result.status }}"
+      when: report_url is defined and post_result.status in [200, 201, 202]
+      
+    - name: Gérer les erreurs d'envoi du rapport
       debug:
-        msg: "{{ apt_check.stdout_lines | length }} mises à jour disponibles"
-      when: ansible_os_family == "Debian" and apt_check.stdout_lines is defined
+        msg: "Erreur lors de l'envoi du rapport: {{ post_result.msg | default('Erreur inconnue') }}"
+      when: report_url is defined and post_result.failed is defined and post_result.failed
