@@ -23,6 +23,12 @@
       changed_when: false
       failed_when: false
 
+    - name: Obtenir des informations détaillées sur les mises à jour disponibles
+      shell: apt-get -s upgrade 2>/dev/null | grep "^Inst" | awk '{print $2 " " $3 " -> " $4}'
+      register: upgrade_details
+      changed_when: false
+      failed_when: false
+
     - name: Compter le nombre de packages à mettre à jour
       shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | tail -n +2 | wc -l
       register: packages_count
