@@ -34,6 +34,11 @@
       register: packages_count
       changed_when: false
 
+    - name : Check security packages
+      shell : apt-get upgrade -s 2>/dev/null | grep ^Inst | grep -i security | tail -n +2 | wc -l
+      register: security_count
+      changed_when: false
+
     - name: Afficher le résumé des mises à jour disponibles
       debug:
         msg: |
@@ -62,6 +67,7 @@
           timestamp: "{{ ansible_date_time.iso8601 }}"
           distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
           packages_count: "{{ packages_count.stdout | int }}"
+          security_count: "{{ security_count.stdout | int }}"
           packages: "{{ upgradable_packages.stdout_lines | default([]) }}"
           upgrade_details: "{{ upgrade_details.stdout_lines | default([]) }}"
       
@@ -75,6 +81,7 @@
           timestamp: "{{ update_report.timestamp }}"
           distribution: "{{ update_report.distribution }}"
           packages_count: "{{ update_report.packages_count }}"
+          security_count: "{{update_report.security_count}}"
           packages: "{{ update_report.packages }}"
           upgrade_details: "{{ update_report.upgrade_details }}"
         headers:
