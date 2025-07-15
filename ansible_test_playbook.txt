@@ -11,7 +11,7 @@
     
     - name: Vérifier les paquets disponibles pour mise à jour (Ubuntu/Debian)
       apt:
-        update_cache: yes
+        update_cache: true
         upgrade: no
       register: apt_check
       when: ansible_os_family == "Debian"
