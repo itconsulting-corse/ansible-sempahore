@@ -43,6 +43,12 @@
       loop: "{{ upgradable_packages.stdout_lines }}"
       when: upgradable_packages.stdout_lines | length > 0
 
+    - name: Afficher les détails des mises à jour
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ upgrade_details.stdout_lines }}"
+      when: upgrade_details.stdout_lines | length > 0
+
     - name: Préparer le rapport JSON pour l'API
       set_fact:
         update_report:
