@@ -16,8 +16,19 @@
       register: apt_check
       when: ansible_os_family == "Debian"
       check_mode: yes
-      
-  
+
+    - name: Obtenir la liste des packages à mettre à jour
+      shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | tail -n +2
+      register: upgradable_packages
+      changed_when: false
+      failed_when: false
+
+    - name: Afficher la liste des packages à mettre à jour
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ upgradable_packages.stdout_lines }}"
+      when: upgradable_packages.stdout_lines | length > 0
+
     - name: Display apt output
       debug:
         var: apt_check
