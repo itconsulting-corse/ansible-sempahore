@@ -52,19 +52,6 @@
           packages_count: "{{ packages_count.stdout | int }}"
           packages: "{{ upgradable_packages.stdout_lines | default([]) }}"
           upgrade_details: "{{ upgrade_details.stdout_lines | default([]) }}"
-          
-    - name: Enregistrer la liste dans un fichier local
-      local_action:
-        module: copy
-        content: |
-          Serveur: {{ inventory_hostname }}
-          Date: {{ ansible_date_time.iso8601 }}
-          Packages à mettre à jour ({{ packages_count.stdout }}):
-          {% for package in upgradable_packages.stdout_lines %}
-          - {{ package }}
-          {% endfor %}
-        dest: "./updates_{{ inventory_hostname }}_{{ ansible_date_time.date }}.txt"
-      when: upgradable_packages.stdout_lines | length > 0
       
     - name: Poster le rapport sur l'URL spécifiée
       uri:
