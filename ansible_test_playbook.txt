@@ -1,6 +1,6 @@
 ---
 - name: Test de gestion des mises à jour
-  hosts: test_servers
+  hosts: test_servers,local
   become: yes
   gather_facts: yes
   
