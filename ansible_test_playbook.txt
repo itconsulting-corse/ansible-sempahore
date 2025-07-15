@@ -17,22 +17,11 @@
       when: ansible_os_family == "Debian"
       check_mode: yes
   
-   - name: Display apt output
+    - name: Display apt output
       debug:
         var: apt_output
 
-    - name: Vérifier les paquets disponibles pour mise à jour (RHEL/CentOS)
-      yum:
-        list: updates
-      register: yum_check
-      when: ansible_os_family == "RedHat"
-    
     - name: Afficher le nombre de mises à jour disponibles (Debian)
       debug:
         msg: "{{ apt_check.stdout_lines | length }} mises à jour disponibles"
       when: ansible_os_family == "Debian" and apt_check.stdout_lines is defined
-    
-    - name: Afficher les mises à jour disponibles (RHEL)
-      debug:
-        msg: "{{ yum_check.results | length }} mises à jour disponibles"
-      when: ansible_os_family == "RedHat" and yum_check.results is defined
