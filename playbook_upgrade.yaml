@@ -55,6 +55,8 @@
       set_fact:
         update_report:
           server: "{{ server_name }}"
+          server_name: "{{ansible_hostname}}"
+          server_fqdn: "{{ansible_fqdn}}"
           timestamp: "{{ ansible_date_time.iso8601 }}"
           os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
           kernel_version: "{{ ansible_kernel }}"
