@@ -17,7 +17,12 @@
       shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | wc -l
       register: packages_to_update
       changed_when: false
-
+      
+    - name : Check security packages à mettre à jour
+      shell : apt-get upgrade -s 2>/dev/null | grep ^Inst | grep -i security | tail -n +2 | wc -l
+      register: security_count_before
+      changed_when: false
+      
     - name: Sauvegarde de la liste des paquets avant mise à jour
       shell: dpkg --get-selections > /tmp/packages_before_update.txt
       changed_when: false
@@ -33,7 +38,12 @@
       shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | wc -l
       register: packages_remaining
       changed_when: false
-
+      
+    - name : Check security packages mis à jour
+      shell : apt-get upgrade -s 2>/dev/null | grep ^Inst | grep -i security | tail -n +2 | wc -l
+      register: security_count_after
+      changed_when: false
+      
     - name: Vérification si un redémarrage est nécessaire
       stat:
         path: /var/run/reboot-required
@@ -60,6 +70,8 @@
           timestamp: "{{ ansible_date_time.iso8601 }}"
           os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
           kernel_version: "{{ ansible_kernel }}"
+          security_package_before: "{{ security_count_before }}"
+          security_package_after: "{{ security_count_after }}"
           packages_updated: "{{ apt_upgrade_result.changed }}"
           packages_before: "{{ packages_to_update.stdout | int - 1 }}"
           packages_remaining: "{{ packages_remaining.stdout | int - 1 }}"
