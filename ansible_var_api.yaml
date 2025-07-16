@@ -1,0 +1,14 @@
+---
+- name: Mise à jour Ubuntu avec rapport webhook
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+      server_name: "{{ inventory_hostname }}"
+    
+  tasks:
+    - name: Exécution ciblée
+      debug:
+        msg: "Je suis {{ inventory_hostname }}"
+      when: ansible_host == limit_ip
+      
