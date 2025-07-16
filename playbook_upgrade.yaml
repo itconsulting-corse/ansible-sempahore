@@ -139,16 +139,6 @@
         path: /tmp/packages_before_update.txt
         state: absent
 
-  rescue:
-    - name: Gestion des erreurs
-      set_fact:
-        error_report:
-          server: "{{ server_name }}"
-          timestamp: "{{ ansible_date_time.iso8601 }}"
-          error_message: "{{ ansible_failed_result.msg }}"
-          task_name: "{{ ansible_failed_task.name }}"
-          status: "ERROR"
-
     - name: Envoi du rapport d'erreur
       uri:
         url: "{{ report_url }}"
