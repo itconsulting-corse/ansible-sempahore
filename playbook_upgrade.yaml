@@ -81,6 +81,7 @@
           disk_usage: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | filesizeformat }}"
           status: "{{ 'SUCCESS' if apt_upgrade_result.changed else 'NO_UPDATES' }}"
           errors: "{{ ansible_failed_result.msg | default('None') }}"
+          systeme: "{{ system_info }}"
 
     - name: Envoi du rapport via webhook
       uri:
