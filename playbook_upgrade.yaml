@@ -7,6 +7,11 @@
       server_name: "{{ inventory_hostname }}"
     
   tasks:
+    - name: Exécution ciblée
+      debug:
+        msg: "Je suis {{ inventory_hostname }}"
+      when: ansible_host == limit_ip
+      
     - name: Mise à jour du cache APT
       apt:
         update_cache: yes
