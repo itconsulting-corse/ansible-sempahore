@@ -49,14 +49,6 @@
         path: /var/run/reboot-required
       register: reboot_required
 
-    - name: Obtention des informations système
-      setup:
-        gather_subset: 
-          - hardware
-          - virtual
-          - network
-      register: system_info
-
     - name: Calcul du temps d'exécution
       set_fact:
         execution_time: "{{ ansible_date_time.epoch | int - (ansible_date_time.epoch | int - (ansible_play_batch | length * 30)) }}"
@@ -81,7 +73,7 @@
           disk_usage: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | filesizeformat }}"
           status: "{{ 'SUCCESS' if apt_upgrade_result.changed else 'NO_UPDATES' }}"
           errors: "{{ ansible_failed_result.msg | default('None') }}"
-          systeme: "{{ system_info }}"
+          
 
     - name: Envoi du rapport via webhook
       uri:
