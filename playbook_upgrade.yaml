@@ -1,6 +1,6 @@
 ---
 - name: Mise à jour Ubuntu avec rapport webhook
-  hosts: "{{ limit_ip }}"
+  hosts: "{{ ansible_limit }}"
   become: yes
   gather_facts: yes
   vars:
