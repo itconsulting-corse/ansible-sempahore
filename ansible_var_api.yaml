@@ -7,6 +7,10 @@
       server_name: "{{ inventory_hostname }}"
     
   tasks:
+    - name: Affiche la variable ma_variable
+      debug:
+        msg: "La valeur de ma_variable est : {{ limit_ip }}"
+        
     - name: Exécution ciblée
       debug:
         msg: "Je suis {{ inventory_hostname }}"
