@@ -1,0 +1,167 @@
+---
+- name: Mise à jour Ubuntu avec rapport webhook
+  hosts: ubuntu_servers
+  become: yes
+  gather_facts: yes
+  vars:
+      server_name: "{{ inventory_hostname }}"
+    
+  tasks:
+    - name: Mise à jour du cache APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      register: apt_update_result
+
+    - name: Vérification des paquets à mettre à jour
+      shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | wc -l
+      register: packages_to_update
+      changed_when: false
+
+    - name: Sauvegarde de la liste des paquets avant mise à jour
+      shell: dpkg --get-selections > /tmp/packages_before_update.txt
+      changed_when: false
+
+    - name: Mise à jour des paquets système
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      register: apt_upgrade_result
+
+    - name: Vérification des paquets après mise à jour
+      shell: apt list --upgradable 2>/dev/null | grep -v "WARNING" | wc -l
+      register: packages_remaining
+      changed_when: false
+
+    - name: Vérification si un redémarrage est nécessaire
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Obtention des informations système
+      setup:
+        gather_subset: 
+          - hardware
+          - virtual
+          - network
+      register: system_info
+
+    - name: Calcul du temps d'exécution
+      set_fact:
+        execution_time: "{{ ansible_date_time.epoch | int - (ansible_date_time.epoch | int - (ansible_play_batch | length * 30)) }}"
+
+    - name: Préparation du rapport de mise à jour
+      set_fact:
+        update_report:
+          server: "{{ server_name }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel_version: "{{ ansible_kernel }}"
+          packages_updated: "{{ apt_upgrade_result.changed }}"
+          packages_before: "{{ packages_to_update.stdout | int - 1 }}"
+          packages_remaining: "{{ packages_remaining.stdout | int - 1 }}"
+          reboot_required: "{{ reboot_required.stat.exists }}"
+          uptime: "{{ ansible_uptime_seconds }}"
+          memory_total: "{{ ansible_memtotal_mb }}MB"
+          disk_usage: "{{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_total') | first | filesizeformat }}"
+          status: "{{ 'SUCCESS' if apt_upgrade_result.changed else 'NO_UPDATES' }}"
+          errors: "{{ ansible_failed_result.msg | default('None') }}"
+
+    - name: Envoi du rapport via webhook
+      uri:
+        url: "{{report_url }}"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          message: "Rapport de mise à jour - {{ server_name }}"
+          server: "{{ update_report.server }}"
+          timestamp: "{{ update_report.timestamp }}"
+          summary: |
+            🖥️ **Serveur**: {{ update_report.server }}
+            📅 **Date**: {{ update_report.timestamp }}
+            🐧 **OS**: {{ update_report.os_version }}
+            🔧 **Kernel**: {{ update_report.kernel_version }}
+            
+            📦 **Paquets avant**: {{ update_report.packages_before }}
+            ✅ **Paquets mis à jour**: {{ 'Oui' if update_report.packages_updated else 'Non' }}
+            📋 **Paquets restants**: {{ update_report.packages_remaining }}
+            
+            🔄 **Redémarrage requis**: {{ 'Oui' if update_report.reboot_required else 'Non' }}
+            ⏱️ **Uptime**: {{ (update_report.uptime / 3600) | round(2) }}h
+            💾 **Mémoire**: {{ update_report.memory_total }}
+            
+            📊 **Statut**: {{ update_report.status }}
+            ❌ **Erreurs**: {{ update_report.errors }}
+          details: "{{ update_report }}"
+        status_code: [200, 201, 204]
+      register: webhook_result
+      failed_when: false
+
+    - name: Affichage du résultat webhook
+      debug:
+        msg: |
+          Webhook envoyé avec succès: {{ webhook_result.status == 200 }}
+          Réponse: {{ webhook_result.json | default('Pas de réponse JSON') }}
+      when: webhook_result.status is defined
+
+    - name: Redémarrage du serveur si nécessaire
+      reboot:
+        reboot_timeout: 600
+        test_command: uptime
+      when: 
+        - reboot_required.stat.exists
+        - auto_reboot | default(false)
+      register: reboot_result
+
+    - name: Notification post-redémarrage
+      uri:
+        url: "{{ report_url }}"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          message: "🔄 Redémarrage terminé - {{ server_name }}"
+          server: "{{ server_name }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          status: "REBOOTED"
+          uptime: "{{ ansible_uptime_seconds }}"
+        status_code: [200, 201, 204]
+      when: reboot_result is defined and reboot_result.changed
+      failed_when: false
+
+  handlers:
+    - name: Nettoyage des fichiers temporaires
+      file:
+        path: /tmp/packages_before_update.txt
+        state: absent
+
+  rescue:
+    - name: Gestion des erreurs
+      set_fact:
+        error_report:
+          server: "{{ server_name }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          error_message: "{{ ansible_failed_result.msg }}"
+          task_name: "{{ ansible_failed_task.name }}"
+          status: "ERROR"
+
+    - name: Envoi du rapport d'erreur
+      uri:
+        url: "{{ report_url }}"
+        method: POST
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        body:
+          message: "❌ Erreur lors de la mise à jour - {{ server_name }}"
+          server: "{{ error_report.server }}"
+          timestamp: "{{ error_report.timestamp }}"
+          error: "{{ error_report.error_message }}"
+          failed_task: "{{ error_report.task_name }}"
+          status: "{{ error_report.status }}"
+        status_code: [200, 201, 204]
+      failed_when: false
